@@ -1,7 +1,7 @@
 import os
 import json
 from models import Threat
-from google import genai
+import google.generativeai as genai
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -26,6 +26,7 @@ System description:
 {flow_text}
 """
 
+
 def extract_json_block(text: str) -> str:
     """
     Attempt to extract a JSON array from a Gemini response, even if it's wrapped in markdown or extra text.
@@ -33,16 +34,16 @@ def extract_json_block(text: str) -> str:
     start = text.find("[")
     end = text.rfind("]")
     if start != -1 and end != -1 and end > start:
-        return text[start:end+1]
+        return text[start : end + 1]
     return text
+
 
 def analyze_system_flow(flow_text: str):
     prompt = PROMPT_TEMPLATE.format(flow_text=flow_text)
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
+            model="gemini-2.5-flash", contents=prompt
         )
 
         raw_text = response.text.strip()
@@ -56,26 +57,33 @@ def analyze_system_flow(flow_text: str):
 
         threats = []
         for t in threats_raw:
-            threats.append(Threat(
-                component=t.get("component", "Unknown"),
-                type=t.get("type", "Unknown"),
-                description=t.get("description", "No description")
-            ))
+            threats.append(
+                Threat(
+                    component=t.get("component", "Unknown"),
+                    type=t.get("type", "Unknown"),
+                    description=t.get("description", "No description"),
+                )
+            )
         return threats
 
     except json.JSONDecodeError as e:
-        return [Threat(
-            component="Error",
-            type="Parsing",
-            description=f"Invalid JSON returned by Gemini: {str(e)}"
-        )]
+        return [
+            Threat(
+                component="Error",
+                type="Parsing",
+                description=f"Invalid JSON returned by Gemini: {str(e)}",
+            )
+        ]
 
     except Exception as e:
-        return [Threat(
-            component="Error",
-            type="ModelCall",
-            description=f"Error during Gemini response parsing: {str(e)}"
-        )]
+        return [
+            Threat(
+                component="Error",
+                type="ModelCall",
+                description=f"Error during Gemini response parsing: {str(e)}",
+            )
+        ]
+
 
 if __name__ == "__main__":
     sample_input = """
