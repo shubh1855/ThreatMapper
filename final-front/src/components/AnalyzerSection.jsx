@@ -2,21 +2,51 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useStrideStore } from '../store/strideStore'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+
 const AnalyzerSection = () => {
   const [flowInput, setFlowInput] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isGeneratingDFD, setIsGeneratingDFD] = useState(false)
   const [dfdImageUrl, setDfdImageUrl] = useState(null)
+  const [analysisError, setAnalysisError] = useState('')
+  const [dfdError, setDfdError] = useState('')
   const { setThreats } = useStrideStore()
+
+  const readErrorMessage = async (response, fallbackMessage) => {
+    try {
+      const data = await response.json()
+      return data?.detail || fallbackMessage
+    } catch {
+      return fallbackMessage
+    }
+  }
+
+  const parseDfdPayload = () => {
+    let parsed
+
+    try {
+      parsed = JSON.parse(flowInput)
+    } catch {
+      throw new Error("DFD generation expects valid JSON with 'nodes' and 'flows' arrays.")
+    }
+
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.flows)) {
+      throw new Error("DFD JSON must contain top-level 'nodes' and 'flows' arrays.")
+    }
+
+    return parsed
+  }
 
   const handleAnalyze = async () => {
     if (!flowInput.trim()) return
 
     setIsAnalyzing(true)
     setDfdImageUrl(null)
+    setAnalysisError('')
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/analyze', {
+      const response = await fetch(`${API_BASE_URL}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ flow: flowInput }),
@@ -26,11 +56,13 @@ const AnalyzerSection = () => {
         const data = await response.json()
         setThreats(data.threats || [])
       } else {
-        console.error('Analysis failed')
+        const message = await readErrorMessage(response, 'Threat analysis failed.')
+        setAnalysisError(message)
         setThreats([])
       }
     } catch (error) {
       console.error('Error analyzing threats:', error)
+      setAnalysisError('Could not reach the backend. Check that the FastAPI server is running.')
       setThreats([])
     } finally {
       setIsAnalyzing(false)
@@ -42,29 +74,20 @@ const AnalyzerSection = () => {
 
     setIsGeneratingDFD(true)
     setDfdImageUrl(null)
-
-    // ✅ TEMPORARY: hardcoded nodes and flows for DFD
-    const dfdPayload = {
-      nodes: [
-        { id: 'User', label: 'User', type: 'external_entity' },
-        { id: 'AuthAPI', label: 'Authentication API', type: 'process' },
-        { id: 'DB', label: 'Database', type: 'data_store' }
-      ],
-      flows: [
-        { source: 'User', target: 'AuthAPI', label: 'Login Request', stride: ['Spoofing'] },
-        { source: 'AuthAPI', target: 'DB', label: 'Validate Credentials', stride: ['Tampering'] }
-      ]
-    }
+    setDfdError('')
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/generate_dfd', {
+      const dfdPayload = parseDfdPayload()
+
+      const response = await fetch(`${API_BASE_URL}/generate_dfd`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dfdPayload),
       })
 
       if (!response.ok) {
-        console.error('Failed to generate DFD')
+        const message = await readErrorMessage(response, 'Failed to generate DFD.')
+        setDfdError(message)
         setDfdImageUrl(null)
         return
       }
@@ -74,6 +97,7 @@ const AnalyzerSection = () => {
       setDfdImageUrl(imageUrl)
     } catch (error) {
       console.error('Error generating DFD:', error)
+      setDfdError(error.message || 'Could not generate the DFD.')
       setDfdImageUrl(null)
     } finally {
       setIsGeneratingDFD(false)
@@ -111,10 +135,13 @@ const AnalyzerSection = () => {
         >
           <div className="input-wrapper">
             <label htmlFor="flowInput" className="input-label">System Flow Description</label>
+            <p style={{ margin: '0 0 0.75rem', opacity: 0.75 }}>
+              Threat analysis accepts prose or pasted JSON. DFD generation expects JSON with `nodes` and `flows`.
+            </p>
             <motion.textarea
               id="flowInput"
               className="flow-input"
-              placeholder="Describe your system flow here..."
+              placeholder="Describe your system flow, or paste DFD JSON here..."
               rows="6"
               value={flowInput}
               onChange={(e) => setFlowInput(e.target.value)}
@@ -152,6 +179,18 @@ const AnalyzerSection = () => {
               {isGeneratingDFD ? 'Generating DFD...' : 'Generate DFD'}
             </motion.button>
           </div>
+
+          {analysisError && (
+            <p style={{ marginTop: '1rem', color: '#ff6b6b' }}>
+              {analysisError}
+            </p>
+          )}
+
+          {dfdError && (
+            <p style={{ marginTop: '0.5rem', color: '#ffb86b' }}>
+              {dfdError}
+            </p>
+          )}
 
           {dfdImageUrl && (
             <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>

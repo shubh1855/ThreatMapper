@@ -1,29 +1,45 @@
-# Node.js dependencies
-node_modules/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
 
-# Vite build output
-dist/
-
-# Local env files
+# Python environment and secrets
 .env
-.env.*.local
+.env.*
+!.env.example
 
-# Log files
+# Node
+node_modules/
+final-front/node_modules/
+dist/
+final-front/dist/
+.build-check/
+*.tsbuildinfo
+
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
-*.log
 
-# OS-specific files
+# Generated artifacts
+backend/dfds/*.png
+dfd*.png
+
+# Editor and OS files
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
-# IDE settings (optional, but helpful)
-.vscode/
-.idea/
-
-# Python (from your previous use)
-__pycache__/
-*.pyc
-venv/
-
+# Accidental lockfiles in the wrong place
+backend/package-lock.json
