@@ -23,32 +23,6 @@ const Footer = () => {
             </svg>
             <span>STRIDE Analyzer</span>
           </motion.div>
-          <div className="footer-links">
-            <motion.a 
-              href="#" 
-              className="footer-link"
-              whileHover={{ scale: 1.05, color: "#39FF14" }}
-              transition={{ duration: 0.2 }}
-            >
-              Documentation
-            </motion.a>
-            <motion.a 
-              href="#" 
-              className="footer-link"
-              whileHover={{ scale: 1.05, color: "#39FF14" }}
-              transition={{ duration: 0.2 }}
-            >
-              Security
-            </motion.a>
-            <motion.a 
-              href="#" 
-              className="footer-link"
-              whileHover={{ scale: 1.05, color: "#39FF14" }}
-              transition={{ duration: 0.2 }}
-            >
-              Support
-            </motion.a>
-          </div>
         </div>
       </div>
     </motion.footer>

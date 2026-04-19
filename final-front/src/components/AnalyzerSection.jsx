@@ -10,6 +10,22 @@ const stripJsonCodeFence = (text) => {
   return fenceMatch ? fenceMatch[1].trim() : trimmed
 }
 
+const normalizeJsonLikeInput = (text) => {
+  const normalizedQuotes = text
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .trim()
+
+  const firstBrace = normalizedQuotes.indexOf('{')
+  const lastBrace = normalizedQuotes.lastIndexOf('}')
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return normalizedQuotes.slice(firstBrace, lastBrace + 1)
+  }
+
+  return normalizedQuotes
+}
+
 const AnalyzerSection = () => {
   const [flowInput, setFlowInput] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -30,7 +46,7 @@ const AnalyzerSection = () => {
 
   const parseDfdPayload = () => {
     let parsed
-    const cleanedInput = stripJsonCodeFence(flowInput)
+    const cleanedInput = normalizeJsonLikeInput(stripJsonCodeFence(flowInput))
 
     try {
       parsed = JSON.parse(cleanedInput)
