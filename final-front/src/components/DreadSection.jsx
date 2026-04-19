@@ -1,6 +1,15 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+const DREAD_FIELDS = [
+  'damage',
+  'reproducibility',
+  'exploitability',
+  'affected_users',
+  'discoverability',
+]
+
 const DreadSection = () => {
   const [dreadValues, setDreadValues] = useState({
     damage: '',
@@ -13,26 +22,48 @@ const DreadSection = () => {
   const [error, setError] = useState(null)
 
   const handleChange = (field, value) => {
+    if (value === '') {
+      setDreadValues((prev) => ({ ...prev, [field]: '' }))
+      return
+    }
+
     const numericValue = Number(value)
-    if (numericValue >= 0 && numericValue <= 10) {
-      setDreadValues(prev => ({ ...prev, [field]: numericValue }))
+    if (!Number.isNaN(numericValue) && numericValue >= 0 && numericValue <= 10) {
+      setDreadValues((prev) => ({ ...prev, [field]: numericValue }))
     }
   }
 
   const handleSubmit = async () => {
+    if (DREAD_FIELDS.some((field) => dreadValues[field] === '')) {
+      setError('Enter all five DREAD values between 0 and 10.')
+      setScore(null)
+      return
+    }
+
     try {
-      const response = await fetch('http://127.0.0.1:8000/dread', {
+      const response = await fetch(`${API_BASE_URL}/dread`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dreadValues),
       })
-      if (!response.ok) throw new Error('Failed to calculate DREAD score')
+
+      if (!response.ok) {
+        let detail = 'Failed to calculate DREAD score.'
+        try {
+          const data = await response.json()
+          detail = data?.detail || detail
+        } catch {
+          // Keep fallback message when the backend returns a non-JSON error.
+        }
+        throw new Error(detail)
+      }
+
       const data = await response.json()
       setScore(data.score)
       setError(null)
     } catch (err) {
       console.error(err)
-      setError('Something went wrong while calculating the DREAD score.')
+      setError(err.message || 'Something went wrong while calculating the DREAD score.')
       setScore(null)
     }
   }
@@ -79,7 +110,7 @@ const DreadSection = () => {
               </thead>
               <tbody>
                 <tr className="results-grid">
-                  {['damage', 'reproducibility', 'exploitability', 'affected_users', 'discoverability'].map(field => (
+                  {DREAD_FIELDS.map((field) => (
                     <td key={field}>
                       <input
                         type="number"

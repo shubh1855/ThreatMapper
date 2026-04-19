@@ -4,6 +4,12 @@ import { useStrideStore } from '../store/strideStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
+const stripJsonCodeFence = (text) => {
+  const trimmed = text.trim()
+  const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
+  return fenceMatch ? fenceMatch[1].trim() : trimmed
+}
+
 const AnalyzerSection = () => {
   const [flowInput, setFlowInput] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -24,11 +30,16 @@ const AnalyzerSection = () => {
 
   const parseDfdPayload = () => {
     let parsed
+    const cleanedInput = stripJsonCodeFence(flowInput)
 
     try {
-      parsed = JSON.parse(flowInput)
+      parsed = JSON.parse(cleanedInput)
     } catch {
-      throw new Error("DFD generation expects valid JSON with 'nodes' and 'flows' arrays.")
+      throw new Error("DFD generation expects valid JSON. Paste raw JSON or a fenced ```json``` block with 'nodes' and 'flows'.")
+    }
+
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.flow && typeof parsed.flow === 'object') {
+      parsed = parsed.flow
     }
 
     if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.flows)) {
