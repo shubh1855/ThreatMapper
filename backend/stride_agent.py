@@ -1,9 +1,18 @@
-import os
 import json
-from models import Threat
-import google.generativeai as genai
+import os
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+try:
+    from .models import Threat
+except ImportError:
+    from models import Threat
+
+try:
+    from google import genai as modern_genai
+except ImportError:
+    modern_genai = None
+
+
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 PROMPT_TEMPLATE = """
 You are a security expert that performs STRIDE threat modeling.
@@ -38,22 +47,59 @@ def extract_json_block(text: str) -> str:
     return text
 
 
-def analyze_system_flow(flow_text: str):
+def normalize_flow_text(flow_input):
+    if isinstance(flow_input, str):
+        return flow_input
+    if isinstance(flow_input, (dict, list)):
+        return json.dumps(flow_input, indent=2)
+    raise TypeError("System flow input must be a string, object, or array.")
+
+
+def generate_with_gemini(prompt: str) -> str:
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set.")
+
+    if modern_genai is not None:
+        client = modern_genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
+        return (response.text or "").strip()
+
+    try:
+        import google.generativeai as legacy_genai
+    except ImportError:
+        legacy_genai = None
+
+    if legacy_genai is not None:
+        legacy_genai.configure(api_key=api_key)
+        model = legacy_genai.GenerativeModel(GEMINI_MODEL)
+        response = model.generate_content(prompt)
+        return (getattr(response, "text", "") or "").strip()
+
+    raise RuntimeError(
+        "Gemini SDK is not installed. Install the backend dependencies from backend/requirements.txt."
+    )
+
+
+def analyze_system_flow(flow_text):
+    flow_text = normalize_flow_text(flow_text)
     prompt = PROMPT_TEMPLATE.format(flow_text=flow_text)
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash", contents=prompt
-        )
-
-        raw_text = response.text.strip()
-        print("DEBUG: Gemini returned:\n", raw_text)  # Show raw output for debugging
+        raw_text = generate_with_gemini(prompt)
+        if not raw_text:
+            raise RuntimeError("Gemini returned an empty response.")
 
         # Try to extract the JSON part
         cleaned_text = extract_json_block(raw_text)
 
         # Parse JSON
         threats_raw = json.loads(cleaned_text)
+        if not isinstance(threats_raw, list):
+            raise ValueError("Gemini response was not a JSON array.")
 
         threats = []
         for t in threats_raw:
@@ -80,7 +126,7 @@ def analyze_system_flow(flow_text: str):
             Threat(
                 component="Error",
                 type="ModelCall",
-                description=f"Error during Gemini response parsing: {str(e)}",
+                description=f"Error during Gemini analysis: {str(e)}",
             )
         ]
 

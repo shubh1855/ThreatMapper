@@ -1,20 +1,16 @@
-# main.py
 import os
 import uuid
 import shutil
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 
-from models import (
-    FlowRequest,
-    ThreatResponse,
-    Threat,
-    DreadRequest,
-    DreadResponse
-)
-
-from stride_agent import analyze_system_flow
+try:
+    from .models import ThreatResponse, DreadRequest, DreadResponse
+    from .stride_agent import analyze_system_flow
+except ImportError:
+    from models import ThreatResponse, DreadRequest, DreadResponse
+    from stride_agent import analyze_system_flow
 
 from graphviz import Digraph
 
@@ -24,7 +20,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # allow all origins for MVP
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -34,8 +30,35 @@ def home():
     return {"status": "Backend running"}
 
 @app.post("/analyze", response_model=ThreatResponse)
-def analyze_flow(flow_request: FlowRequest):
-    threats = analyze_system_flow(flow_request.flow)
+async def analyze_flow(request: Request):
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body.")
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
+
+    if "flow" in payload:
+        flow_data = payload["flow"]
+    elif "nodes" in payload and "flows" in payload:
+        flow_data = payload
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either a 'flow' field or a DFD JSON object with 'nodes' and 'flows'.",
+        )
+
+    if isinstance(flow_data, str) and not flow_data.strip():
+        raise HTTPException(status_code=400, detail="'flow' must not be empty.")
+
+    if not isinstance(flow_data, (str, dict, list)):
+        raise HTTPException(
+            status_code=400,
+            detail="'flow' must be a string, object, or array.",
+        )
+
+    threats = analyze_system_flow(flow_data)
     return {"threats": threats}
 
 @app.post("/dread", response_model=DreadResponse)
@@ -57,8 +80,8 @@ def calculate_overall_dread(dread: DreadRequest):
     score = round(sum(values) / 5.0, 2)
     return {"score": score}
 
-# Directory for generated DFD PNGs
-DFD_FOLDER = os.path.join(os.getcwd(), "dfds")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DFD_FOLDER = os.path.join(BASE_DIR, "dfds")
 os.makedirs(DFD_FOLDER, exist_ok=True)
 
 
@@ -85,6 +108,9 @@ async def generate_dfd(request: Request):
         data = await request.json()
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON body.")
+
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
 
     nodes = data.get("nodes", [])
     flows = data.get("flows", [])
