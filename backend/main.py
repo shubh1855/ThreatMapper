@@ -112,6 +112,9 @@ async def generate_dfd(request: Request):
     if not isinstance(data, dict):
         raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
 
+    if "flow" in data and isinstance(data["flow"], dict):
+        data = data["flow"]
+
     nodes = data.get("nodes", [])
     flows = data.get("flows", [])
 
