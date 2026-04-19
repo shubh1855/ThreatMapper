@@ -52,48 +52,6 @@ const HeroSection = () => {
           >
             Advanced cybersecurity threat modeling and analysis platform
           </motion.p>
-          
-          <motion.div 
-            className="status-strip"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-          >
-            <div className="status-cards">
-              <motion.div 
-                className="status-card"
-                whileHover={{ scale: 1.05, y: -2 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="status-value">127</div>
-                <div className="status-label">Threats Blocked</div>
-              </motion.div>
-              <motion.div 
-                className="status-card"
-                whileHover={{ scale: 1.05, y: -2 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="status-value">12ms</div>
-                <div className="status-label">Latency</div>
-              </motion.div>
-              <motion.div 
-                className="status-card"
-                whileHover={{ scale: 1.05, y: -2 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="status-value">99.9%</div>
-                <div className="status-label">Uptime</div>
-              </motion.div>
-              <motion.div 
-                className="status-card"
-                whileHover={{ scale: 1.05, y: -2 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="status-value">Active</div>
-                <div className="status-label">System Status</div>
-              </motion.div>
-            </div>
-          </motion.div>
         </div>
       </div>
     </motion.section>

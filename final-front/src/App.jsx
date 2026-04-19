@@ -9,7 +9,6 @@ import HeroSection from './components/HeroSection'
 import AnalyzerSection from './components/AnalyzerSection'
 import ResultsSection from './components/ResultsSection'
 import DreadSection from './components/DreadSection'
-import SecuritySection from './components/SecuritySection'
 import Footer from './components/Footer'
 import './App.css'
 
@@ -69,7 +68,6 @@ function App() {
         <AnalyzerSection />
         <ResultsSection />
         <DreadSection />
-        <SecuritySection />
       </motion.main>
       
       <Footer />
